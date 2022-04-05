@@ -53,7 +53,7 @@ EPperc = c(0.72, 0.61, 0.59, 0.65, 0.81, 0.79)
 ggplot(firstViz) +
   aes(x = factor(episode, level = movie_order), y = perc) +
   geom_bar(stat = "identity", fill = "cornflowerblue") +
-  coord_flip(ylim = c(0.0475, 1)) +
+  coord_flip(ylim = c(0.0475, 0.95)) +
   scale_x_discrete(limits = rev) + 
   scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
   labs(title = "Which 'Star Wars' Movies Have You Seen?",
@@ -62,8 +62,8 @@ ggplot(firstViz) +
        x = NULL, y = NULL) +
   theme(plot.title = element_text(hjust= -0.65),
         plot.subtitle = element_text(hjust = -0.49, vjust = 2.5),
-        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-        panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 1)) +
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(face = "bold", size = 9), 
+        panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 0.5)) +
   geom_text(data = firstViz, aes(x = episode, y = 0.04+perc, label = paste(formatC(100*perc, digits = 0, format = "f"),"%",sep = "")))
 ```
 
