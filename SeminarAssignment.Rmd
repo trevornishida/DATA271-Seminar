@@ -20,7 +20,7 @@ starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "
 data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
   set_colnames(starwarscol) %>% 
   slice(2:n()) %>% 
-  mutate_at(4:9, funs(recode(., .default = 1))) %>% 
+  mutate_at(4:9, ~recode(., .default = 1)) %>% 
   mutate(across(4:9, ~replace_na(., 0))) 
 ```
 
@@ -29,9 +29,29 @@ data = read.csv(link, header=T, na.strings=c("","NA")) %>%
 firstViz = data %>% 
   filter(seen == "Yes") %>% 
   select(1:9) %>% 
-  summarise(across(4:9, ~mean(.)))
+  summarise(across(4:9, ~mean(.))) %>% 
+  pivot_longer(everything(), names_to = "episode", values_to = "perc") %>% 
+  mutate(episode = recode(episode, "ep1" = "The Phantom Menace", 
+                          "ep2" = "Attack of the Clones", 
+                          "ep3" = "Revenge of the Sith", 
+                          "ep4" = "A New Hope", 
+                          "ep5" = "The Empire Strikes Back", 
+                          "ep6" = "Return of the Jedi"))
+movie_order = c("The Phantom Menace", "Attack of the Clones", "Revenge of the Sith", "A New Hope", "The Empire Strikes Back", "Return of the Jedi")
 
 ggplot(firstViz) +
-  aes(x = )
+  aes(x = factor(episode, level = movie_order), y = perc) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  coord_flip(ylim = c(0.0475, 1)) +
+  scale_x_discrete(limits = rev) + 
+  scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+  labs(title = "Which 'Star Wars' Movies Have You Seen?",
+       subtitle = "Of 936 respondents who have seen any film",
+       caption = "Data: FiveThirtyEight",
+       x = NULL, y = NULL) +
+  theme(plot.title = element_text(hjust= -0.65),
+        plot.subtitle = element_text(hjust = -0.49, vjust = 2.5),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        plot.)
 ```
 
