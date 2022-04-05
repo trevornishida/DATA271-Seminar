@@ -17,15 +17,15 @@ link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-
 
 starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "hansolo", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3p0", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
 
-data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
+
+data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
   set_colnames(starwarscol) %>% 
-  slice(2:n()) %>% 
+  slice(3:n()) %>% 
   mutate_at(4:9, ~recode(., .default = 1)) %>% 
   mutate(across(4:9, ~replace_na(., 0))) 
 ```
 
 ```{r}
-
 firstViz = data %>% 
   filter(seen == "Yes") %>% 
   select(1:9) %>% 
@@ -37,7 +37,11 @@ firstViz = data %>%
                           "ep4" = "A New Hope", 
                           "ep5" = "The Empire Strikes Back", 
                           "ep6" = "Return of the Jedi"))
+
 movie_order = c("The Phantom Menace", "Attack of the Clones", "Revenge of the Sith", "A New Hope", "The Empire Strikes Back", "Return of the Jedi")
+
+EPperc = c(0.72, 0.61, 0.59, 0.65, 0.81, 0.79)
+  
 
 ggplot(firstViz) +
   aes(x = factor(episode, level = movie_order), y = perc) +
@@ -52,6 +56,7 @@ ggplot(firstViz) +
   theme(plot.title = element_text(hjust= -0.65),
         plot.subtitle = element_text(hjust = -0.49, vjust = 2.5),
         axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-        plot.)
+        panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 1)) +
+  annotate("text", x = 1, y = 0.03+firstViz$perc, label= "0.72")
 ```
 
