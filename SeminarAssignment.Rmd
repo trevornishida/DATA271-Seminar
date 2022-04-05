@@ -1,0 +1,37 @@
+---
+title: "SeminarAssignment"
+author: "Trevor Nishida"
+date: "4/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(magrittr)
+library(ggpubr)
+```
+
+```{r}
+link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-survey/StarWars.csv"
+
+starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "hansolo", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3p0", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
+
+data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
+  set_colnames(starwarscol) %>% 
+  slice(2:n()) %>% 
+  mutate_at(4:9, funs(recode(., .default = 1))) %>% 
+  mutate(across(4:9, ~replace_na(., 0))) 
+```
+
+```{r}
+
+firstViz = data %>% 
+  filter(seen == "Yes") %>% 
+  select(1:9) %>% 
+  summarise(across(4:9, ~mean(.)))
+
+ggplot(firstViz) +
+  aes(x = )
+```
+
