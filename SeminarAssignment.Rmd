@@ -1,8 +1,12 @@
 ---
-title: "SeminarAssignment"
+title: "Data Journalism Seminar"
 author: "Trevor Nishida"
-date: "4/4/2022"
-output: html_document
+date: "MATH 271 SP2022"
+output: 
+  html_document: 
+    code_folding: hide
+    code_download: true
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -11,6 +15,10 @@ library(tidyverse)
 library(magrittr)
 library(ggpubr)
 ```
+
+- Story: <https://fivethirtyeight.com/features/americas-favorite-star-wars-movies-and-least-favorite-characters/>
+- Data: <https://github.com/fivethirtyeight/data/tree/master/star-wars-survey>
+- Rmd: Use the "Code" menu at the top right of the page to download the source file for this report.
 
 ```{r}
 link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-survey/StarWars.csv"
@@ -32,11 +40,36 @@ data = read.csv(link, header=T, na.strings=c("","NA")) %>%
   mutate(across(4:9, ~replace_na(., 0))) 
 ```
 
+<h2 style ="text-align: center;">
+**America's Favorite '***Star Wars***' Movies **
+
+**(And Least Favorite Characters)**
+</h2>
+
+:::{.center-block style="padding:1em;max-width:75%"}
+![Yoda's costume from the “Star Wars” series is displayed during an exhibition at the Cite du Cinema in Saint-Denis, France  
+CHESNOT / Getty Images](https://fivethirtyeight.com/wp-content/uploads/2014/07/499502015tc035_star_wars_ex.jpg?w=575)
+:::
+
+#### Introduction
+
+This article was written about a year before the release of the seventh film in the "Star Wars - Skywalker Saga" *Episode VII - The Force Awakens*. The data set contains survey results from 1185 respondents about their thoughts on the original trilogy, the prequel trilogy and various characters from the franchise as well as general demographic information. 
+
+Each respondent was asked whether they watched any "Star Wars" films, whether they considered themselves to be a "Star Wars" fan, to check boxes regarding which movies they have watched (if any), and if they did watch all 6 movies to rank them from best to worst. Respondents then had to rate various main and supporting characters from the franchise on a scale from Favorable to Unfavorable. Questions about their age, gender, region, and income were also asked. The survey finished off with a question referencing a scene in the film *Episode IV - A New Hope* wherein supporting character Han Solo shoots an alien accomplice. In the article, they use this data to conclude that among "Star Wars" fans there is a gender discrepancy. The also display the various percentage of respondents who viewed each film as well as the popularity. Then they show the various character ratings among each rank on the scale and finish off the article with the question referencing the Han Solo scene. 
+
+
+#### Visualization Recreations
+
+The article contains 5 total visualizations. The visualization on the left displays the probability that any fan has seen a given "Star Wars" film. The one on the right displays the percentage of the fan base which rates a given "Star Wars" film as the best overall. I also noticed a mismatch in both number of respondents who've seen any film and the number of respondents who've seen all six between my analysis and the original one done by FiveThirtyEight.
+
+::::{.row-no-gutters}
+
+:::{.col-lg-6}
 ```{r}
 firstViz = data %>% 
   filter(seen == "Yes") %>% 
   select(1:9) %>% 
-  summarise(across(4:9, ~mean(.))) %>% 
+  summarise(across(4:9, ~mean(.))) %>%
   pivot_longer(everything(), names_to = "episode", values_to = "perc") %>% 
   mutate(episode = recode(episode, "ep1" = "The Phantom Menace", 
                           "ep2" = "Attack of the Clones", 
@@ -66,4 +99,50 @@ ggplot(firstViz) +
         panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 0.5)) +
   geom_text(data = firstViz, aes(x = episode, y = 0.04+perc, label = paste(formatC(100*perc, digits = 0, format = "f"),"%",sep = "")))
 ```
+:::
+
+
+
+:::{.col-lg-6}
+```{r}
+secondViz = data %>% 
+  filter(seen == "Yes") %>% 
+  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
+  select(1:15) %>% 
+  mutate_at("fave3", ~replace_na(., "6")) %>% 
+  mutate_at(10:15, ~as.numeric(.)) %>% 
+  summarise(across(10:15, ~str_detect(., "^1"))) %>% 
+  pivot_longer(everything(), names_to = "episode", values_to = "score") %>% 
+  group_by(episode) %>% 
+  summarise(sum = sum(score)) %>% 
+  mutate(episode = recode(episode, 
+                          "fave1" = "The Phantom Menace", 
+                          "fave2" = "Attack of the Clones", 
+                          "fave3" = "Revenge of the Sith", 
+                          "fave4" = "A New Hope", 
+                          "fave5" = "The Empire Strikes Back", 
+                          "fave6" = "Return of the Jedi"))
+
+movie_order = c("The Phantom Menace", "Attack of the Clones", "Revenge of the Sith", "A New Hope", "The Empire Strikes Back", "Return of the Jedi")
+  
+
+ggplot(secondViz) +
+  aes(x = factor(episode, level = movie_order), y = sum) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  coord_flip(ylim = c(9.12, 200)) +
+  scale_x_discrete(limits = rev) + 
+  scale_y_continuous() +
+  labs(title = "Which 'Star Wars' Movie is the best?",
+       subtitle = "Of 470 respondents who have seen all six films",
+       caption = "Data: FiveThirtyEight",
+       x = NULL, y = NULL) +
+  theme(plot.title = element_text(hjust= -0.47),
+        plot.subtitle = element_text(hjust = -0.49, vjust = 2.5),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(face = "bold", size = 9), 
+        panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 0.5)) +
+  geom_text(data = secondViz, aes(x = episode, y = 10+sum, label = paste(formatC(100*(sum/470), digits = 0, format = "f"),"%",sep = "")))
+```
+:::
+
+::::
 
