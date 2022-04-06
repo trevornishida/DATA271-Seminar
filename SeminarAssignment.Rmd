@@ -51,14 +51,14 @@ data = read.csv(link, header=T, na.strings=c("","NA")) %>%
 CHESNOT / Getty Images](https://fivethirtyeight.com/wp-content/uploads/2014/07/499502015tc035_star_wars_ex.jpg?w=575)
 :::
 
-#### Introduction
+### Introduction
 
 This article was written about a year before the release of the seventh film in the "Star Wars - Skywalker Saga" *Episode VII - The Force Awakens*. The data set contains survey results from 1185 respondents about their thoughts on the original trilogy, the prequel trilogy and various characters from the franchise as well as general demographic information. 
 
 Each respondent was asked whether they watched any "Star Wars" films, whether they considered themselves to be a "Star Wars" fan, to check boxes regarding which movies they have watched (if any), and if they did watch all 6 movies to rank them from best to worst. Respondents then had to rate various main and supporting characters from the franchise on a scale from Favorable to Unfavorable. Questions about their age, gender, region, and income were also asked. The survey finished off with a question referencing a scene in the film *Episode IV - A New Hope* wherein supporting character Han Solo shoots an alien accomplice. In the article, they use this data to conclude that among "Star Wars" fans there is a gender discrepancy. The also display the various percentage of respondents who viewed each film as well as the popularity. Then they show the various character ratings among each rank on the scale and finish off the article with the question referencing the Han Solo scene. 
 
 
-#### Visualization Recreations
+### Visualization Recreations
 
 The article contains 5 total visualizations. The visualization on the left displays the probability that any fan has seen a given "Star Wars" film. The one on the right displays the percentage of the fan base which rates a given "Star Wars" film as the best overall. I also noticed a mismatch in both number of respondents who've seen any film and the number of respondents who've seen all six between my analysis and the original one done by FiveThirtyEight.
 
@@ -123,9 +123,6 @@ secondViz = data %>%
                           "fave5" = "The Empire Strikes Back", 
                           "fave6" = "Return of the Jedi"))
 
-movie_order = c("The Phantom Menace", "Attack of the Clones", "Revenge of the Sith", "A New Hope", "The Empire Strikes Back", "Return of the Jedi")
-  
-
 ggplot(secondViz) +
   aes(x = factor(episode, level = movie_order), y = sum) +
   geom_bar(stat = "identity", fill = "cornflowerblue") +
@@ -145,4 +142,110 @@ ggplot(secondViz) +
 :::
 
 ::::
+
+This third visualization displays how often each different film was rated within the top third (ranked #1 or #2), middle third (ranked #3 or #4) or bottom third (ranked #5 or #6) of ratings. Not so surprisingly, the original trilogy ranked within the top third majority of the time. I also struggled for an undisclosed amount of time attempting to make the subtitle left justified to no avail; but we don't talk about that.
+
+::::{.row-no-gutters}
+
+:::{.center-block}
+```{r warning=FALSE}
+thirdViz = data %>% 
+  filter(seen == "Yes") %>% 
+  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
+  select(1:15) %>% 
+  mutate_at("fave3", ~replace_na(., "6")) %>% 
+  mutate_at(10:15, ~as.numeric(.)) %>% 
+  mutate(across(10:15, ~recode(., 
+                              "1" = "1",
+                              "2" = "1",
+                              "3" = "2",
+                              "4" = "2",
+                              "5" = "3",
+                              "6" = "3"))) %>% 
+  select(10:15) %>% 
+  pivot_longer(everything(), names_to = "episode", values_to = "score") %>% 
+  group_by(episode) %>% 
+  summarise(top = sum(score == "1"), mid = sum(score == "2"), bot = sum(score == "3")) %>% 
+  mutate(episode = recode(episode, 
+                          "fave1" = "The Phantom Menace", 
+                          "fave2" = "Attack of the Clones", 
+                          "fave3" = "Revenge of the Sith", 
+                          "fave4" = "A New Hope", 
+                          "fave5" = "The Empire Strikes Back", 
+                          "fave6" = "Return of the Jedi")) %>% 
+  pivot_longer(cols = top:bot, names_to = "third", values_to = "score") %>% 
+  mutate_at("third", ~factor(., levels = c("top", "mid", "bot")))
+
+labelTrue = list(
+  "top" = "Top third",
+  "mid" = "Middle third",
+  "bot" = "Bottom third"
+)
+
+labelThird = function(variable, value){
+  return(labelTrue[value])
+}
+
+ggplot(thirdViz) +
+  aes(x = factor(episode, level = movie_order), y = score, fill = third) +
+  geom_bar(stat = "identity") +
+  coord_flip(ylim = c(17, 400)) +
+  scale_x_discrete(limits = rev) + 
+  scale_y_continuous() +
+  labs(title = "How People Rate the 'Star Wars' Movies" ,
+       subtitle = 
+       "How often each film was rated in the top, middle, and bottom third 
+       (by the 470 respondents who have seen all six films)",
+       caption = "Data: FiveThirtyEight",
+       x = NULL, y = NULL) +
+  theme(plot.title = element_text(hjust= -5.5, face = "bold", size = 20),
+        plot.subtitle = element_text(hjust = -0.8, vjust = 2.5, size = 10),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 8), axis.ticks.y = element_blank(),
+        panel.grid = element_blank(), panel.border = element_blank(), panel.background = element_blank(),
+        strip.background = element_blank(), strip.text = element_text(family = "sans", face = "bold", size = 10),
+        legend.position = "none") +
+  geom_text(data = thirdViz, aes(x = episode, y = 45+score, 
+                                 label = paste(formatC(100*(score/470), digits = 0, format = "f"),"%", sep = ""))) +
+  facet_grid(cols = vars(third), margins = F, labeller = labelThird) +
+  scale_fill_manual(values = c("#75ae3f","#0090d5","#fd2800"))
+  
+```
+:::
+
+::::
+
+The final "serious" visualization done in the article involves a handful of characters from these six films which were rated using a format used by political polls, where respondents rate characters as "Favorable", "Neutral", "Unfavorable" or "Unfamiliar" based on their own opinion. FiveThirtyEight then went on to exclaim that the character **Jar Jar Binks** surprisingly had a lower favorability rating than **Emperor Palpatine**, one of the main antagonists of the series. To me, this wasn't surprising at all considering the comedic way that Jar Jar talks and the clumsiness of the character creating a rift between what original trilogy fans consider to be the films' relatively dark themes and Jar Jar's comedic relief. 
+
+
+```{r}
+fourthViz = data %>% 
+  filter(seen == "Yes") %>% 
+  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
+  select(1:15) %>% 
+  mutate_at("fave3", ~replace_na(., "6")) %>% 
+  mutate_at(10:15, ~as.numeric(.)) %>% 
+  mutate(across(10:15, ~recode(., 
+                              "1" = "1",
+                              "2" = "1",
+                              "3" = "2",
+                              "4" = "2",
+                              "5" = "3",
+                              "6" = "3"))) %>% 
+  select(10:15) %>% 
+  pivot_longer(everything(), names_to = "episode", values_to = "score") %>% 
+  group_by(episode) %>% 
+  summarise(top = sum(score == "1"), mid = sum(score == "2"), bot = sum(score == "3")) %>% 
+  mutate(episode = recode(episode, 
+                          "fave1" = "The Phantom Menace", 
+                          "fave2" = "Attack of the Clones", 
+                          "fave3" = "Revenge of the Sith", 
+                          "fave4" = "A New Hope", 
+                          "fave5" = "The Empire Strikes Back", 
+                          "fave6" = "Return of the Jedi")) %>% 
+  pivot_longer(cols = top:bot, names_to = "third", values_to = "score") %>% 
+  mutate_at("third", ~factor(., levels = c("top", "mid", "bot")))
+
+```
+
 
