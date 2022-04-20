@@ -23,7 +23,7 @@ library(ggpubr)
 ```{r}
 link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-survey/StarWars.csv"
 
-starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "hansolo", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3p0", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
+starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "han", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3po", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
 
 #macOS
 #data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
@@ -219,33 +219,90 @@ The final "serious" visualization done in the article involves a handful of char
 
 
 ```{r}
+character_order = c("Luke Skywalker", "Han Solo", "Leia Organa", "Obi-Wan Kenobi", "Yoda", "R2-D2", "C-3PO", "Anakin Skywalker", "Darth Vader", "Lando Calrissian", "Padmé Amidala", "Boba Fett", "Palpatine", "Jar Jar Binks")
+
+fourthViznames = as.data.frame(starwars$name)
+colnames(fourthViznames) = "name"
+fourthViznames = fourthViznames %>%
+  mutate("realname" = name) %>% 
+  mutate(across(1, str_extract, "^([\\S]+)")) %>% 
+  mutate(name = replace(name, 4, "vader")) %>% 
+  mutate(name = replace(name, 34, "jarjar")) %>% 
+  mutate(name = replace(name, 87, "padme")) %>% 
+  mutate(across(1, ~tolower(.))) %>%
+  mutate(across(1, ~gsub("-", "", .)))
+
+
+
 fourthViz = data %>% 
   filter(seen == "Yes") %>% 
-  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
-  select(1:15) %>% 
-  mutate_at("fave3", ~replace_na(., "6")) %>% 
-  mutate_at(10:15, ~as.numeric(.)) %>% 
-  mutate(across(10:15, ~recode(., 
-                              "1" = "1",
-                              "2" = "1",
-                              "3" = "2",
-                              "4" = "2",
-                              "5" = "3",
-                              "6" = "3"))) %>% 
-  select(10:15) %>% 
-  pivot_longer(everything(), names_to = "episode", values_to = "score") %>% 
-  group_by(episode) %>% 
-  summarise(top = sum(score == "1"), mid = sum(score == "2"), bot = sum(score == "3")) %>% 
-  mutate(episode = recode(episode, 
-                          "fave1" = "The Phantom Menace", 
-                          "fave2" = "Attack of the Clones", 
-                          "fave3" = "Revenge of the Sith", 
-                          "fave4" = "A New Hope", 
-                          "fave5" = "The Empire Strikes Back", 
-                          "fave6" = "Return of the Jedi")) %>% 
-  pivot_longer(cols = top:bot, names_to = "third", values_to = "score") %>% 
-  mutate_at("third", ~factor(., levels = c("top", "mid", "bot")))
+  mutate_at(16:29, ~recode(., "Very unfavorably" = 3,
+                              "Somewhat unfavorably" = 3, 
+                              "Neither favorably nor unfavorably (neutral)" = 2,
+                              "Somewhat favorably" = 1,
+                              "Very favorably" = 1,
+                              "Unfamiliar (N/A)" = 0,
+                              .missing = 0)) %>% 
+  select(16:29) %>% 
+  pivot_longer(everything(), names_to = "character", values_to = "score") %>%
+  group_by(character) %>% 
+  summarise(Favorable = sum(score == "1"), Neutral = sum(score == "2"), Unfavorable = sum(score == "3"), Unfamiliar = sum(score == "0")) %>% 
+  left_join(fourthViznames, by = c("character" = "name"), keep = F) %>% 
+  pivot_longer(cols = Favorable:Unfamiliar, names_to = "favorability", values_to = "votes") %>% 
+  mutate(favorability = factor(favorability, levels = c("Favorable", "Neutral", "Unfavorable", "Unfamiliar")))
 
+ggplot(fourthViz) +
+  aes(x = factor(realname, levels = character_order), y = votes, fill = favorability) +
+  geom_bar(stat = "identity") +
+  coord_flip(ylim = c(0, 1100)) +
+  scale_x_discrete(limits = rev) + 
+  scale_y_continuous() +
+  labs(title = "'Star Wars' Character Favorability Ratings'" ,
+       subtitle = "By 834 respondents",
+       caption = "Data: FiveThirtyEight") +
+  geom_text(data = fourthViz, aes(x = realname, y = 150+votes, 
+                                 label = paste(formatC(100*(votes/834), digits = 0, format = "f"),"%", sep = ""))) +
+  theme(plot.title = element_text(hjust= -3.2, face = "bold", size = 20),
+        plot.subtitle = element_text(hjust = -0.14, vjust = 2.5, size = 10),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 8), axis.ticks.y = element_blank(), axis.title.y = element_blank(),
+        panel.grid = element_blank(), panel.border = element_blank(), panel.background = element_blank(),
+        strip.background = element_blank(), strip.text = element_text(family = "sans", face = "bold", size = 10),
+        legend.position = "none") +
+  facet_grid(cols = vars(favorability), margins = F) +
+  scale_fill_manual(values = c("#75ae3f","#0090d5","#fd2800","gray"))
 ```
 
+After this visualization they proceed to show one final one which has the survey respondents question to the question "Who Shot First?" in the context of the scene in which Han Solo kills a character named Greedo from 'Star Wars Episode IV: A New Hope'. This scene in particular was extremely controversial as in the original film Han shoots and kills Greedo, however in later versions, the scene was edited to make Greedo attempt to shoot and miss and Han fires back in retaliation. 
+
+```{r}
+fifthViz = data %>% 
+  filter(seen == "Yes") %>% 
+  select(shot) %>% 
+  group_by(shot) %>% 
+  count() %>% 
+  filter(shot != "NA")
+
+addline_format <- function(x,...){
+    gsub('\\s','\n',x)
+}
+
+ggplot(fifthViz) +
+  aes(x = factor(shot, levels = c("Han", "Greedo", "I don't understand this question")), y = n) +
+  geom_bar(stat = "identity", fill = "cornflowerblue") +
+  scale_x_discrete(limits = rev, labels = addline_format(c("I don't understand this question", "Greedo", "Han"))) + 
+  scale_y_continuous() +
+  coord_flip(ylim = c(0, 500)) +
+  geom_text(data = fifthViz, aes(x = shot, y = 30+n, 
+                                 label = paste(formatC(100*(n/834), digits = 0, format = "f"),"%", sep = ""))) +
+  theme(plot.title = element_text(hjust= -0.3, face = "bold", size = 20),
+        plot.subtitle = element_text(hjust = -0.25, vjust = 2.5, size = 10),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 16), axis.ticks.y = element_blank(), axis.title.y = element_blank(),
+        panel.grid = element_blank(), panel.border = element_rect(color = "black", fill = NA, size = 0.5), panel.background = element_blank(),
+        strip.background = element_blank(), strip.text = element_text(family = "sans", face = "bold", size = 10),
+        legend.position = "none") +
+  labs(title = "Who Shot First?",
+       subtitle = "According to 834 respondents")
+```
 
