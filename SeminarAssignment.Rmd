@@ -25,19 +25,19 @@ link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-
 
 starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "han", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3po", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
 
-#macOS
-#data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
-# set_colnames(starwarscol) %>% 
-# slice(3:n()) %>% 
-# mutate_at(4:9, ~recode(., .default = 1)) %>% 
-# mutate(across(4:9, ~replace_na(., 0))) )
+#macOS or Linux
+data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
+set_colnames(starwarscol) %>% 
+slice(3:n()) %>% 
+mutate_at(4:9, ~recode(., .default = 1)) %>% 
+mutate(across(4:9, ~replace_na(., 0)))
 
 #Windows
-data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
-  set_colnames(starwarscol) %>% 
-  slice(3:n()) %>% 
-  mutate_at(4:9, ~recode(., .default = 1)) %>% 
-  mutate(across(4:9, ~replace_na(., 0))) 
+#data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
+#  set_colnames(starwarscol) %>% 
+#  slice(3:n()) %>% 
+#  mutate_at(4:9, ~recode(., .default = 1)) %>% 
+#  mutate(across(4:9, ~replace_na(., 0))) 
 ```
 
 <h2 style ="text-align: center;">
@@ -283,14 +283,11 @@ fifthViz = data %>%
   count() %>% 
   filter(shot != "NA")
 
-addline_format <- function(x,...){
-    gsub('\\s','\n',x)
-}
-
 ggplot(fifthViz) +
   aes(x = factor(shot, levels = c("Han", "Greedo", "I don't understand this question")), y = n) +
   geom_bar(stat = "identity", fill = "cornflowerblue") +
-  scale_x_discrete(limits = rev, labels = addline_format(c("I don't understand this question", "Greedo", "Han"))) + 
+  scale_x_discrete(limits = rev, labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
+                                                 width = 18)) + #Creating function to line break after 18 characters.
   scale_y_continuous() +
   coord_flip(ylim = c(0, 500)) +
   geom_text(data = fifthViz, aes(x = shot, y = 30+n, 
@@ -303,6 +300,7 @@ ggplot(fifthViz) +
         strip.background = element_blank(), strip.text = element_text(family = "sans", face = "bold", size = 10),
         legend.position = "none") +
   labs(title = "Who Shot First?",
-       subtitle = "According to 834 respondents")
+       subtitle = "According to 834 respondents",
+       caption = "Data: FiveThirtyEight")
 ```
 
