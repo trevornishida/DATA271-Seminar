@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(magrittr)
 library(ggpubr)
+library(kableExtra)
 ```
 
 - Story: <https://fivethirtyeight.com/features/americas-favorite-star-wars-movies-and-least-favorite-characters/>
@@ -26,18 +27,19 @@ link = "https://raw.githubusercontent.com/fivethirtyeight/data/master/star-wars-
 starwarscol = c("id", "seen", "fan", "ep1", "ep2", "ep3", "ep4", "ep5", "ep6", "fave1", "fave2", "fave3", "fave4", "fave5", "fave6", "han", "luke", "leia", "anakin", "obiwan", "palpatine", "vader", "lando", "boba", "c3po", "r2d2", "jarjar", "padme", "yoda", "shot", "expand", "expandfan", "startrek", "gender", "age", "income", "education", "region")
 
 #macOS or Linux
-data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
-set_colnames(starwarscol) %>% 
-slice(3:n()) %>% 
-mutate_at(4:9, ~recode(., .default = 1)) %>% 
-mutate(across(4:9, ~replace_na(., 0)))
+#data = read.csv(link, header=T, na.strings=c("","NA"), fileEncoding = 'Latin1') %>% 
+# set_colnames(starwarscol) %>% 
+# slice(3:n()) %>% 
+# mutate_at(4:9, ~recode(., .default = 1)) %>% 
+# mutate(across(4:9, ~replace_na(., 0)))
+ogdata = read.csv(link)
 
 #Windows
-#data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
-#  set_colnames(starwarscol) %>% 
-#  slice(3:n()) %>% 
-#  mutate_at(4:9, ~recode(., .default = 1)) %>% 
-#  mutate(across(4:9, ~replace_na(., 0))) 
+data = read.csv(link, header=T, na.strings=c("","NA")) %>% 
+  set_colnames(starwarscol) %>% 
+  slice(3:n()) %>% 
+  mutate_at(4:9, ~recode(., .default = 1)) %>% 
+  mutate(across(4:9, ~replace_na(., 0))) 
 ```
 
 <h2 style ="text-align: center;">
@@ -148,6 +150,7 @@ This third visualization displays how often each different film was rated within
 ::::{.row-no-gutters}
 
 :::{.center-block}
+
 ```{r warning=FALSE}
 thirdViz = data %>% 
   filter(seen == "Yes") %>% 
@@ -302,5 +305,193 @@ ggplot(fifthViz) +
   labs(title = "Who Shot First?",
        subtitle = "According to 834 respondents",
        caption = "Data: FiveThirtyEight")
+```
+
+### Discussion
+
+Since the original trilogy was rated into the top third of the ratings much more often than the prequel trilogy. I wanted to see if the older age groups rated the original trilogy higher since they might have had a sort of nostalgic feel about the films. To attempt to answer this question I decided to color the bars by age groups. 
+
+```{r message=FALSE, warning=FALSE}
+discViz = data %>% 
+  filter(seen == "Yes") %>% 
+  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
+  select(1:15, 35) %>% 
+  mutate_at("fave3", ~replace_na(., "6")) %>% 
+  mutate_at(10:15, ~as.numeric(.)) %>% 
+  mutate(across(10:15, ~recode(., 
+                              "1" = "1",
+                              "2" = "1",
+                              "3" = "2",
+                              "4" = "2",
+                              "5" = "3",
+                              "6" = "3"))) %>% 
+  select(10:16) %>% 
+  group_by(age) %>%
+  pivot_longer(1:6, names_to = "episode", values_to = "score") %>% 
+  group_by(episode, age) %>% 
+  summarise(top = sum(score == "1"), mid = sum(score == "2"), bot = sum(score == "3")) %>% 
+  filter(age != "NA") %>% 
+  mutate(episode = recode(episode, 
+                          "fave1" = "The Phantom Menace", 
+                          "fave2" = "Attack of the Clones", 
+                          "fave3" = "Revenge of the Sith", 
+                          "fave4" = "A New Hope", 
+                          "fave5" = "The Empire Strikes Back", 
+                          "fave6" = "Return of the Jedi")) %>% 
+  pivot_longer(cols = top:bot, names_to = "third", values_to = "score") %>% 
+  mutate_at("third", ~factor(., levels = c("top", "mid", "bot"))) %>% 
+  mutate(age = as.factor(age))
+
+ggplot(discViz) +
+  aes(x = factor(episode, level = movie_order), y = score, fill = third) +
+  geom_bar(stat = "identity", aes(alpha = age, color = "value")) +
+  coord_flip(ylim = c(17, 400)) +
+  scale_x_discrete(limits = rev) + 
+  scale_y_continuous() +
+  labs(title = "How People Rate the 'Star Wars' Movies" ,
+       subtitle = 
+       "How often each film was rated in the top, middle, and bottom third 
+       (by the 470 respondents who have seen all six films)",
+       caption = "Data: FiveThirtyEight",
+       x = NULL, y = NULL) +
+  theme(plot.title = element_text(hjust= 1, face = "bold", size = 20),
+        plot.subtitle = element_text(hjust = -0.8, vjust = 2.5, size = 10),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 8), axis.ticks.y = element_blank(),
+        panel.grid = element_blank(), panel.border = element_blank(), panel.background = element_blank(),
+        strip.background = element_blank(), strip.text = element_text(family = "sans", face = "bold", size = 10)) +
+  geom_text(data = thirdViz, aes(x = episode, y = 45+score, 
+                                 label = paste(formatC(100*(score/470), digits = 0, format = "f"),"%", sep = ""))) +
+  facet_grid(cols = vars(third), margins = F, labeller = labelThird) +
+  scale_fill_manual(values = c("#75ae3f","#0090d5","#fd2800")) +
+  scale_color_manual(values = "black") +
+  guides(color = F, fill = F)
+```
+
+Looking at this we can see that the age groups didn't vote differently very dramatically. In fact it looks almost as if they voted around the same for each movie. Naturally we can't conclude this confidently without some statistical test result backing up our conclusion. To test whether our mean scores differed among age groups we can use a Kruskal Wallis one way analysis of variance.
+
+```{r include=FALSE}
+discAna = data %>% 
+  filter(seen == "Yes") %>% 
+  filter(if_all(4:9, ~str_detect(., "^1"))) %>% 
+  select(1:15, 35) %>% 
+  mutate_at("fave3", ~replace_na(., "6")) %>% 
+  mutate_at(10:15, ~as.numeric(.)) %>% 
+  mutate(across(10:15, ~recode(., 
+                              "1" = "1",
+                              "2" = "1",
+                              "3" = "2",
+                              "4" = "2",
+                              "5" = "3",
+                              "6" = "3"))) %>% 
+  select(10:16) %>% 
+  group_by(age) %>%
+  pivot_longer(1:6, names_to = "episode", values_to = "score") %>% 
+  filter(age != "NA") %>% 
+  mutate(episode = recode(episode, 
+                          "fave1" = "The Phantom Menace", 
+                          "fave2" = "Attack of the Clones", 
+                          "fave3" = "Revenge of the Sith", 
+                          "fave4" = "A New Hope", 
+                          "fave5" = "The Empire Strikes Back", 
+                          "fave6" = "Return of the Jedi")) %>% 
+  group_by(episode) %>% 
+  mutate(score = as.numeric(score)) %>% 
+  group_split()
+names(discAna) = c("ep4data", "ep2data", "ep6data", "ep3data", "ep5data", "ep1data")
+list2env(discAna, globalenv())
+```
+
+::::{.row}
+
+:::{.col-md-6}
+
+#### Prequel Kruskal tests
+
+```{r}
+kruskal.test(age ~ score, data = ep1data)
+kruskal.test(age ~ score, data = ep2data)
+kruskal.test(age ~ score, data = ep3data)
+```
+
+:::
+
+:::{.col-md-6}
+
+#### Original Trilogy Kruskal tests.
+
+```{r}
+kruskal.test(age ~ score, data = ep4data)
+kruskal.test(age ~ score, data = ep5data)
+kruskal.test(age ~ score, data = ep6data)
+```
+
+:::
+
+::::
+
+Looking at the output of our tests we can conclude that significant differences occur among median scores for the first, second and fifth movies; while the other films have no significant differences occur among their median scores. We can go further and plot this to show us where those differences lie.
+
+::::{.row}
+
+:::{.col-md-4 .pull-left}
+
+```{r}
+ggplot(ep1data) +
+  aes(x = age, y = score, fill = age) +
+  stat_summary(geom = "bar", fun = "mean", color = "black") +
+  scale_x_discrete(limits = c("18-29", "30-44", "45-60", "> 60"))+
+  labs(x = "Age group", y = "Score", title = "Median scores among age groups for 'Star Wars Episode I: The Phantom Menace'", 
+       caption = "Data: FiveThirtyEight") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust= 0.5, face = "bold", size = 12),
+        legend.position = "none")
+```
+
+:::
+
+:::{.col-md-4}
+
+```{r}
+ggplot(ep2data) +
+  aes(x = age, y = score, fill = age) +
+  stat_summary(geom = "bar", fun = "mean", color = "black") +
+  scale_x_discrete(limits = c("18-29", "30-44", "45-60", "> 60")) +
+  labs(x = "Age group", y = "Score", title = "Median scores among age groups for 'Star Wars Episode II: Attack of the Clones'", 
+       caption = "Data: FiveThirtyEight") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust= 0.5, face = "bold", size = 12),
+        legend.position = "none")
+```
+
+:::
+
+:::{.col-md-4 .pull-right}
+
+```{r}
+ggplot(ep5data) +
+  aes(x = age, y = score, fill = age) +
+  stat_summary(geom = "bar", fun = "mean", color = "black") +
+  scale_x_discrete(limits = c("18-29", "30-44", "45-60", "> 60")) +
+  labs(x = "Age group", y = "Score", title = "Median scores among age groups for 'Star Wars Episode V: The Empire Strikes Back'", 
+       caption = "Data: FiveThirtyEight") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust= 0.4, face = "bold", size = 12),
+        legend.position = "none")
+```
+
+:::
+
+::::
+
+Based on this, for the first movie, the significant differences occurred between the age groups of 30-44 year olds and > 60 year olds. In the second movie, the differences occurred between the age group of 45-60 year olds and > 60 year olds. And in the fifth movie, the differences occurred between the age groups of 30-44 year olds and > 60 year olds.
+
+One final thing I noticed about this data set was how difficult it was to work with at first due to the structuring of the original data. There was a lot of "X.1, X.2, etc." variables that needed to be deciphered by looking at the context of the data it contained. The original data required lots of dplyr functions to get it into a workable state. I assume it was just the creator of the data set being lazy, but compared to some of the other data found in the FiveThirtyEight Github, I felt that this data set was just a little on the unorganized side. The original data set can be seen below.
+
+```{r}
+kbl(ogdata) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                full_width = F, position = "center") %>% 
+  scroll_box(width = "100%", height = "465px")
 ```
 
